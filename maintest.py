@@ -11,6 +11,7 @@ import re
 import xlwt
 import time
 import datetime
+import threading
 
 # 创建目录，以keyword命名
 def creat_mk(keyword):
@@ -61,7 +62,7 @@ def get_key(index,keyword):
 
 
 # 根据网站的index，获取其检索结果，包括url和data
-def url_data(i, index, count_sheet, count_path, all_path, mkpath, count_book, all_writer):
+def url_data(i, index, count_sheet, count_path, all_path, mkpath, count_book, all_writer, keyword):
     (url_adds, search_type, s_name) = get_key(index,keyword)        # 获取检索式
     print('*' * 20, "正在从%s进行爬取" % s_name, '*' * 20)
     count = search_url(search_type, url_adds, mkpath)                # 爬取URL，并写入url
@@ -161,7 +162,7 @@ def gather(keyword):
     counts = 0
     for i in range(0, len(index_list)):
         index = index_list[i]
-        rel_count = url_data(i, index, count_sheet, count_path, all_path, mkpath, count_book, all_writer)  # 依次获取网站data
+        rel_count = url_data(i, index, count_sheet, count_path, all_path, mkpath, count_book, all_writer, keyword)  # 依次获取网站data
         counts = counts + rel_count
     print('*' * 20, "所有网站爬取完毕，共爬取%s条数据" % str(counts), '*' * 20)
 
@@ -176,6 +177,36 @@ def gather(keyword):
     # get_all_data(keyword,all_path)   #存到all_data表
     # print('*' * 20, "已写入数据库", '*' * 20)
 
+
+
+all_webname = base_list.all_webname
+all_urls = base_list.all_urls
+# 需要两套函数来爬取提高速度
+
+
+
+import threading
+import time
+import base_list
+from maintest import gather
+
+class myThread (threading.Thread):
+    def __init__(self, threadID, name, t_keywords):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.t_keywords = t_keywords
+    def run(self):
+        print ("开始线程：" + self.name)
+        for skeyword in self.t_keywords:
+            for keyword in skeyword:
+                # try:
+                    gather(keyword)
+                    print('*' * 20, "“%s”爬取成功" % keyword, '*' * 20)
+                # except:
+                    print('*' * 20, "“%s”爬取失败" % keyword, '*' * 20)
+        print ("退出线程：" + self.name)
+
 if __name__ == "__main__":
     # # 输入网站列表和关键词
     # (index_list,keyword) = select_website()
@@ -183,32 +214,45 @@ if __name__ == "__main__":
 
     # time.sleep(16000)
     start = time.clock()
-    # 导入数据源，关键词10个 网站列表19个。全局变量，不用传递也可使用
+    # 导入数据源，关键词10个 网站列表19个
     keywords = base_list.keywords
-    all_webname = base_list.all_webname
-    all_urls = base_list.all_urls
 
-    # 每日爬取数据，尝试map并行处理
+
+    # 每日爬取数据，尝试并行处理
+    keywords01 = []
+    keywords02 = []
     for i in range(1, len(keywords)):
-        skeyword = keywords[i]
-        print(skeyword)
-        for keyword in skeyword:
-            try:
-                gather(keyword)
-                print('*' * 20, "“%s”爬取成功" % keyword, '*' * 20)
-            except:
-                print('*' * 20, "“%s”爬取失败" % keyword, '*' * 20)
+        if i <= 2 :
+            keywords01.append(keywords[i])
+        else:
+            keywords02.append(keywords[i])
+    print(keywords02)
+    print(keywords01)
 
-    # 写入hdbs数据库
-    todat_i = hdbs_mysql()
-    end = time.clock()
-    today_time = end -start
+    # 创建新线程
+    thread1 = myThread(1, "关键词列表1", keywords01)
+    thread2 = myThread(2, "关键词列表2", keywords02)
+
+    # 开启新线程
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
+    print("退出主线程")
+
+    # # 写入hdbs数据库
+    # todat_i = hdbs_mysql()
+    # end = time.clock()
+    # # today_time = end -start
+    # # todat_i = 43
     # today_time = '13000'
-    print("数据爬取用时:", today_time, "秒")
-    # 发送邮件
-    send_mail(today_time,todat_i)
-    # 写入日志
-    rz_file(today_time,todat_i)
+    # print("数据爬取用时:", today_time, "秒")
+    # # 发送邮件
+    # send_mail(today_time,todat_i)
+    # # 写入日志
+    # rz_file(today_time,todat_i)
+
+
 
 
 

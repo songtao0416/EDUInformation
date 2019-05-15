@@ -94,6 +94,40 @@ def insert_sql_data(id_list, web_list,name_list,name2_list,time_list,url_list,da
     print("*"*20,"在数据库中共插入%d条数据" % i, "*"*20)
     return i
 
+# 将db_urls存入csv中，在读取url爬取data前进行去重
+def csv_dburls():
+    dbcsv_adds = '(URL)DB.csv'
+    # 判断文件是否存在
+    if (os.path.exists(dbcsv_adds)):
+        os.remove(dbcsv_adds)
+    else:
+        print("(URL)DB文件不存在！")
+
+    path = dbcsv_adds
+    csvfile = open(path, 'a+', encoding='utf-8', newline='')
+    dburl_writer = csv.writer(csvfile)
+    dburl_writer.writerow(('URL编号', 'URL'))
+    return dburl_writer
+
+# 读取db中，所有url数据
+def get_dburls():
+    dburl_writer = csv_dburls()
+    content_sql()  # 连接mysql
+    sql = "SELECT ORIGINAL_LINK FROM originallink "
+    try:
+        # 执行SQL语句
+        cursor.execute(sql)
+        # 获取所有记录列表
+        results = cursor.fetchall()
+        i = 1
+        for row in results:
+            db_url = (''.join(row))
+            dburl_writer.writerow((i, db_url))
+            i += 1
+    except:
+        print("数据库读取失败")
+    print("(URL)DB表更新成功")
+
 # 读取db中数据,对比筛掉重复数据,主要对比对象为"标题"
 def get_dbdata():
     db_list = []
@@ -158,12 +192,15 @@ def hdbs_mysql():
     # 调用数据源中的关键词和主题标识码
     keywords = base_list.keywords
     asub_list =base_list.sub_list
+    # 获取数据插入数据，返回插入数据的数量
     todat_i = coon_sql(keywords, asub_list)
+    # 获取数据库中已存在的URLlist，并保存csv中，避免下次抓取
+    get_dburls()
     return todat_i
 
 # 删除数据库中记录
 # del_sql()
-
+# get_dburls()
 # start = time.clock()
 # # hdbs_mysql()
 # end = time.clock()
